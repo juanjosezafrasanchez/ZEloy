@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZEloy</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#17202a;background:#f5f7fa}
+*{box-sizing:border-box} body{margin:0}.wrap{max-width:900px;margin:auto;padding:20px}
+h1{font-size:26px;margin:4px 0 6px}.sub{color:#65717d;margin:0 0 18px}
+.card{background:#fff;border:1px solid #dfe4ea;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #0000000a}
+label{font-weight:600;display:block;margin-bottom:8px}
+textarea{width:100%;min-height:280px;border:1px solid #cbd3dc;border-radius:10px;padding:12px;font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+button{border:0;border-radius:9px;padding:10px 15px;font-weight:600;cursor:pointer;background:#1f6feb;color:white}
+button.secondary{background:#e9edf2;color:#25313d}
+.info{font-size:13px;color:#65717d;margin-top:10px;line-height:1.45}
+.result-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}
+.count{font-size:13px;color:#65717d}.list{margin:0;padding:0;list-style:none}
+.item{display:flex;gap:12px;padding:9px 4px;border-bottom:1px solid #edf0f3;align-items:baseline}
+.item:last-child{border-bottom:0}.date{font-variant-numeric:tabular-nums;font-weight:700;min-width:88px}
+.med{font-size:16px}.error{color:#b42318;background:#fff1f0;border:1px solid #ffd5d2;padding:10px;border-radius:9px;margin-top:10px;display:none}
+@media(max-width:600px){.wrap{padding:12px}.date{min-width:82px;font-size:14px}.med{font-size:15px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>ZEloy</h1>
+    <p class="sub">Prescripción</p>
+    <label for="input">Pega aquí el texto de las prescripciones</label>
+    <textarea id="input" placeholder="Pega el texto tal como lo copias..."></textarea>
+    <div class="actions">
+      <button id="process">Convertir</button>
+      <button class="secondary" id="clear">Borrar</button>
+      <button class="secondary" id="copy">Copiar resultado</button>
+    </div>
+    <div class="info">
+      Se muestra una sola vez cada medicamento, conservando su fecha más reciente.
+      Todos los medicamentos aparecen. La fecha solo se muestra si la última prescripción
+      está dentro de los últimos 30 días. Se eliminan las cantidades del envase.
+    </div>
+    <div id="error" class="error"></div>
+  </div>
+
+  <div class="card">
+    <div class="result-head"><strong>Resultado</strong><span class="count" id="count"></span></div>
+    <ul class="list" id="result"></ul>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let lastResult=[];
+
+function clean(s){
+  return s.replace(/\s+/g,' ').replace(/^[\s|;,:-]+|[\s|;,:-]+$/g,'').trim();
+}
+function key(s){return clean(s).toLocaleLowerCase('es');}
+
+function parseDate(line){
+  const re=/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b/;
+  const m=line.match(re);
+  if(!m)return null;
+  let y=Number(m[3]); if(y<100)y+=2000;
+  const d=Number(m[1]), mo=Number(m[2]);
+  const dt=new Date(y,mo-1,d,12,0,0,0);
+  if(dt.getFullYear()!=y||dt.getMonth()!=mo-1||dt.getDate()!=d)return null;
+  return {date:dt,start:m.index,end:m.index+m[0].length};
+}
+
+function normalizeFrequency(s){
+  let x=s.replace(/\bdesayuno\s*[\+\&\/,;]\s*comida\s*[\+\&\/,;]\s*cena\b/ig,'1/8h');
+  x=x.replace(/\bdesayuno\s+comida\s+cena\b/ig,'1/8h');
+  x=x.replace(/\bdesayuno\s*[\+\&\/,;]\s*cena\b/ig,'1/12h');
+  x=x.replace(/\bdesayuno\s+cena\b/ig,'1/12h');
+
+  x=x.replace(/\bdesayuno\b/ig,'1/desayuno');
+  x=x.replace(/\bcomida\b/ig,'1/comida');
+  x=x.replace(/\bcena\b/ig,'1/cena');
+
+  x=x.replace(/\b(?:cada|c\/)\s*8\s*h(?:oras?)?\b/ig,'1/8h');
+  x=x.replace(/\b(?:cada|c\/)\s*12\s*h(?:oras?)?\b/ig,'1/12h');
+  x=x.replace(/\b(?:cada|c\/)\s*24\s*h(?:oras?)?\b/ig,'1/24h');
+
+  return clean(x);
+}
+
+function removePackAmounts(s){
+  // Elimina cantidades típicas del envase: 30 comprimidos, 28 cápsulas, 60 sobres, etc.
+  const units='comprimidos?|cápsulas?|capsulas?|sobres?|ampollas?|viales?|tabletas?|grageas?|unidades?|uds?';
+  let x=s.replace(new RegExp('\\b\\d+\\s*(?:'+units+')\\b','ig'),'');
+  x=x.replace(/\b(?:envase|caja)\s*(?:de\s*)?\d+\b/ig,'');
+  return clean(x);
+}
+
+function prepareMedication(line,dateInfo){
+  let med=dateInfo ? line.slice(0,dateInfo.start)+' '+line.slice(dateInfo.end) : line;
+  med=clean(med);
+  med=removePackAmounts(med);
+  med=normalizeFrequency(med);
+  // Evita espacios antes/después de separadores habituales.
+  med=med.replace(/\s+([,;])/g,'$1');
+  return clean(med);
+}
+
+function cutoff30(){
+  const d=new Date(); d.setHours(12,0,0,0);
+  d.setDate(d.getDate()-30);
+  return d;
+}
+
+function formatDate(d){
+  return d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+
+function process(){
+  $('error').style.display='none';
+  const lines=$('input').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const map=new Map();
+
+  for(const line of lines){
+    const di=parseDate(line);
+    const date=di?.date||null;
+    const med=prepareMedication(line,di);
+    if(!med)continue;
+
+    const k=key(med);
+    const old=map.get(k);
+
+    if(!old || (date && (!old.date || date>old.date))){
+      map.set(k,{name:med,date});
+    }
+  }
+
+  lastResult=[...map.values()].sort((a,b)=>{
+    if(a.date&&b.date)return b.date-a.date;
+    if(a.date)return -1;
+    if(b.date)return 1;
+    return a.name.localeCompare(b.name,'es',{sensitivity:'base'});
+  });
+
+  const cutoff=cutoff30();
+  $('result').innerHTML='';
+
+  for(const item of lastResult){
+    const li=document.createElement('li');
+    li.className='item';
+
+    const ds=document.createElement('span');
+    ds.className='date';
+    if(item.date && item.date>=cutoff) ds.textContent=formatDate(item.date);
+
+    const ms=document.createElement('span');
+    ms.className='med';
+    ms.textContent=item.name;
+
+    li.append(ds,ms);
+    $('result').appendChild(li);
+  }
+
+  $('count').textContent=lastResult.length+' medicamento'+(lastResult.length===1?'':'s');
+  if(lines.length && !lastResult.length){
+    $('error').textContent='No he podido extraer medicamentos del texto pegado.';
+    $('error').style.display='block';
+  }
+}
+
+$('process').onclick=process;
+$('clear').onclick=()=>{
+  $('input').value=''; $('result').innerHTML=''; $('count').textContent='';
+  $('error').style.display='none'; lastResult=[];
+};
+$('copy').onclick=async()=>{
+  const cutoff=cutoff30();
+  const text=lastResult.map(x=>
+    (x.date&&x.date>=cutoff?formatDate(x.date)+' ':'')+x.name
+  ).join('\n');
+  if(text) await navigator.clipboard.writeText(text);
+};
+</script>
+</body>
+</html>
