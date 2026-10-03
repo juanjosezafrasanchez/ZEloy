@@ -1,283 +1,520 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ZEloy</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZEloy - Prescripción</title>
 <style>
-:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#17202a;background:#f5f7fa}
-*{box-sizing:border-box}
-body{margin:0}
-.wrap{max-width:900px;margin:auto;padding:20px}
-h1{font-size:26px;margin:4px 0 6px}
-.sub{color:#65717d;margin:0 0 18px}
-.card{background:#fff;border:1px solid #dfe4ea;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #0000000a}
-label{font-weight:600;display:block;margin-bottom:8px}
-textarea{width:100%;min-height:280px;border:1px solid #cbd3dc;border-radius:10px;padding:12px;font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-button{border:0;border-radius:9px;padding:10px 15px;font-weight:600;cursor:pointer;background:#1f6feb;color:white}
-.info{font-size:13px;color:#65717d;margin-top:10px;line-height:1.45}
-.result-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}
-.count{font-size:13px;color:#65717d}
-.list{margin:0;padding:0;list-style:none}
-.item{display:flex;gap:12px;padding:9px 4px;border-bottom:1px solid #edf0f3;align-items:baseline}
-.item:last-child{border-bottom:0}
-.date{font-variant-numeric:tabular-nums;font-weight:700;min-width:88px}
-.med{font-size:16px}
-.error{color:#b42318;background:#fff1f0;border:1px solid #ffd5d2;padding:10px;border-radius:9px;margin-top:10px;display:none}
-@media(max-width:600px){
-.wrap{padding:12px}
-.date{min-width:82px;font-size:14px}
-.med{font-size:15px}
+* {
+    box-sizing: border-box;
+}
+body {
+    margin: 0;
+    padding: 20px;
+    background: #f4f6f8;
+    color: #1f2933;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+h1 {
+    margin: 0;
+    font-size: 30px;
+    color: #111827;
+}
+.subtitle {
+    margin: 3px 0 20px;
+    color: #667085;
+    font-size: 16px;
+}
+.card {
+    background: white;
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+textarea {
+    width: 100%;
+    min-height: 300px;
+    resize: vertical;
+    padding: 13px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    outline: none;
+}
+textarea:focus {
+    border-color: #2563eb;
+}
+button {
+    margin-top: 12px;
+    width: 100%;
+    padding: 12px 16px;
+    border: 0;
+    border-radius: 10px;
+    background: #2563eb;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+button:active {
+    transform: scale(0.99);
+}
+.result-title {
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+.result {
+    white-space: pre-wrap;
+    font-size: 16px;
+    line-height: 1.55;
+    word-break: break-word;
+}
+.empty {
+    color: #667085;
+}
+.message {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #667085;
+}
+@media (max-width: 600px) {
+    body {
+        padding: 12px;
+    }
+    .card {
+        padding: 14px;
+    }
+    textarea {
+        min-height: 260px;
+    }
 }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="container">
 <div class="card">
-<h1>ZEloy</h1>
-<p class="sub">Prescripción</p>
-<label for="input">Pega aquí el texto de las prescripciones</label>
-<textarea id="input" placeholder="Pega el texto tal como lo copias..."></textarea>
-<div class="actions">
-<button id="copy">Copiar resultado</button>
-</div>
-<div class="info">
-El resultado se genera automáticamente al pegar o escribir el texto.
-Se muestra una sola vez cada medicamento, conservando su fecha más reciente.
-La fecha solo se muestra si la última prescripción está dentro de los últimos 30 días.
-Se eliminan las cantidades del envase.
-</div>
-<div id="error" class="error"></div>
+    <h1>ZEloy</h1>
+    <div class="subtitle">Prescripción</div>
+    <label for="inputText">Texto de prescripción</label>
+    <textarea
+        id="inputText"
+        placeholder="Pega aquí las prescripciones..."
+    ></textarea>
+    <button id="copyButton">Copiar resultado</button>
+    <div class="message">
+        El resultado se genera automáticamente al pegar o escribir el texto.
+    </div>
 </div>
 <div class="card">
-<div class="result-head">
-<strong>Resultado</strong>
-<span class="count" id="count"></span>
-</div>
-<ul class="list" id="result"></ul>
+    <div class="result-title">Resultado</div>
+    <div id="result" class="result empty">
+        Aquí aparecerá el resultado.
+    </div>
 </div>
 </div>
 <script>
-const $=id=>document.getElementById(id);
-let lastResult=[];
-
-function clean(s){
-return s.replace(/\s+/g,' ').replace(/^[\s|;,:-]+|[\s|;,:-]+$/g,'').trim();
+/* =========================================================
+   CONFIGURACIÓN
+   ========================================================= */
+const inputText = document.getElementById("inputText");
+const result = document.getElementById("result");
+const copyButton = document.getElementById("copyButton");
+/* =========================================================
+   FECHAS
+   ========================================================= */
+function parseDate(text) {
+    const regex = /\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b/;
+    const match = text.match(regex);
+    if (!match) {
+        return null;
+    }
+    let day = parseInt(match[1], 10);
+    let month = parseInt(match[2], 10);
+    let year = parseInt(match[3], 10);
+    if (year < 100) {
+        year += 2000;
+    }
+    const date = new Date(year, month - 1, day, 12, 0, 0);
+    if (
+        date.getFullYear() !== year ||
+        date.getMonth() !== month - 1 ||
+        date.getDate() !== day
+    ) {
+        return null;
+    }
+    return {
+        date: date,
+        text: match[0],
+        index: match.index,
+        length: match[0].length
+    };
 }
-
-function key(s){
-return clean(s).toLocaleLowerCase('es');
+function formatDate(date) {
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
 }
-
-function parseDate(line){
-const re=/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b/;
-const m=line.match(re);
-if(!m)return null;
-let y=Number(m[3]);
-if(y<100)y+=2000;
-const d=Number(m[1]);
-const mo=Number(m[2]);
-const dt=new Date(y,mo-1,d,12,0,0,0);
-if(dt.getFullYear()!==y||dt.getMonth()!==mo-1||dt.getDate()!==d)return null;
-return{date:dt,start:m.index,end:m.index+m[0].length};
+function isWithinLast30Days(date) {
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    const limit = new Date(today);
+    limit.setDate(limit.getDate() - 30);
+    return date >= limit && date <= today;
 }
-
-function removeEnvAmounts(s){
-const units='comprimidos?|cápsulas?|capsulas?|sobres?|ampollas?|viales?|tabletas?|grageas?|unidades?|uds?';
-let x=s;
-
-x=x.replace(
-new RegExp('\\b(?:envase|env)\\s+(?:de\\s+)?\\d+\\s*(?:'+units+')\\b','ig'),
-''
-);
-
-x=x.replace(/\b(?:envase|env)\s+(?:de\s+)?\d+\b/ig,'');
-
-x=x.replace(/\b(?:envase|env)\b/ig,'');
-
-return clean(x);
+/* =========================================================
+   ELIMINAR LÍNEAS QUE NO SON MEDICACIÓN
+   ========================================================= */
+function isExcludedLine(line) {
+    return /\b(media|absorvente|pañal)\b/i.test(line);
 }
-
-function removePackAmounts(s){
-const units='comprimidos?|cápsulas?|capsulas?|sobres?|ampollas?|viales?|tabletas?|grageas?|unidades?|uds?';
-let x=s.replace(
-new RegExp('\\b\\d+\\s*(?:'+units+')\\b','ig'),
-''
-);
-
-x=x.replace(/\b(?:envase|caja)\s*(?:de\s*)?\d+\b/ig,'');
-
-return clean(x);
+/* =========================================================
+   ELIMINAR ENVASES
+   ========================================================= */
+function removePackageInformation(text) {
+    let value = text;
+    /*
+       Elimina expresiones como:
+       env 30 comprimidos
+       envase 30 comprimidos
+       envase de 30 comprimidos
+       env 20 cápsulas
+       envase de 28 cápsulas
+       etc.
+    */
+    value = value.replace(
+        /\b(?:envase|env)\s*(?:de\s*)?\d+\s*(?:comprimidos?|cápsulas?|capsulas?|sobres?|ampollas?|viales?|tabletas?|grageas?|unidades?|uds?)\b/gi,
+        ""
+    );
+    /*
+       Si queda solamente "env" o "envase", también se elimina.
+    */
+    value = value.replace(/\b(?:envase|env)\b/gi, "");
+    return cleanSpaces(value);
 }
-
-function normalizeFrequency(s){
-let x=s;
-
-x=x.replace(
-/\bdesayuno\s*[\+\&\/,;]\s*comida\s*[\+\&\/,;]\s*cena\b/ig,
-'1/8h'
-);
-
-x=x.replace(
-/\bdesayuno\s+comida\s+cena\b/ig,
-'1/8h'
-);
-
-x=x.replace(
-/\bdesayuno\s*[\+\&\/,;]\s*cena\b/ig,
-'1/12h'
-);
-
-x=x.replace(
-/\bdesayuno\s+cena\b/ig,
-'1/12h'
-);
-
-x=x.replace(/\bdesayuno\b/ig,'1/desayuno');
-x=x.replace(/\bcomida\b/ig,'1/comida');
-x=x.replace(/\bcena\b/ig,'1/cena');
-
-x=x.replace(/\b(?:cada|c\/)\s*8\s*h(?:oras?)?\b/ig,'1/8h');
-x=x.replace(/\b(?:cada|c\/)\s*12\s*h(?:oras?)?\b/ig,'1/12h');
-x=x.replace(/\b(?:cada|c\/)\s*24\s*h(?:oras?)?\b/ig,'1/24h');
-
-return clean(x);
+/* =========================================================
+   PAUTAS DESAYUNO / COMIDA / CENA
+   ========================================================= */
+/*
+   Última regla indicada:
+   desayuno + comida + cena
+        -> 1/8h
+   desayuno + cena
+        -> 1/12h
+   una sola palabra
+        desayuno -> 1/desayuno
+        comida    -> 1/comida
+        cena      -> 1/cena
+   También:
+        cada 8 h  -> 1/8h
+        cada 12 h -> 1/12h
+        cada 24 h -> 1/24h
+*/
+function normalizeFrequency(text) {
+    let value = text;
+    /*
+       Primero las combinaciones para que no sean
+       sustituidas por separado.
+    */
+    value = value.replace(
+        /\bdesayuno\s*(?:\+|y|\/|,)\s*comida\s*(?:\+|y|\/|,)\s*cena\b/gi,
+        "1/8h"
+    );
+    value = value.replace(
+        /\bdesayuno\s+comida\s+cena\b/gi,
+        "1/8h"
+    );
+    value = value.replace(
+        /\bdesayuno\s*(?:\+|y|\/|,)\s*cena\b/gi,
+        "1/12h"
+    );
+    value = value.replace(
+        /\bdesayuno\s+cena\b/gi,
+        "1/12h"
+    );
+    /*
+       Intervalos horarios.
+    */
+    value = value.replace(
+        /\b(?:cada|c\/)\s*8\s*h(?:oras?)?\b/gi,
+        "1/8h"
+    );
+    value = value.replace(
+        /\b(?:cada|c\/)\s*12\s*h(?:oras?)?\b/gi,
+        "1/12h"
+    );
+    value = value.replace(
+        /\b(?:cada|c\/)\s*24\s*h(?:oras?)?\b/gi,
+        "1/24h"
+    );
+    /*
+       Una sola comida.
+    */
+    value = value.replace(/\bdesayuno\b/gi, "1/desayuno");
+    value = value.replace(/\bcomida\b/gi, "1/comida");
+    value = value.replace(/\bcena\b/gi, "1/cena");
+    return cleanSpaces(value);
 }
-
-function prepareMedication(line,dateInfo){
-let med=line;
-
-if(dateInfo){
-med=line.slice(0,dateInfo.start)+' '+line.slice(dateInfo.end);
+/* =========================================================
+   ELIMINAR CANTIDADES DEL ENVASE
+   ========================================================= */
+function removePackageQuantity(text) {
+    let value = text;
+    /*
+       Elimina:
+       30 comprimidos
+       28 cápsulas
+       60 sobres
+       etc.
+       NO elimina:
+       875 mg
+       500 mg
+       1 g
+       20 mg/ml
+       500 microgramos
+       etc.
+    */
+    value = value.replace(
+        /\b\d+\s*(?:comprimidos?|cápsulas?|capsulas?|sobres?|ampollas?|viales?|tabletas?|grageas?|unidades?|uds?)\b/gi,
+        ""
+    );
+    return cleanSpaces(value);
 }
-
-med=clean(med);
-med=removeEnvAmounts(med);
-med=removePackAmounts(med);
-med=normalizeFrequency(med);
-med=med.replace(/\s+([,;])/g,'$1');
-
-return clean(med);
+/* =========================================================
+   LIMPIEZA GENERAL
+   ========================================================= */
+function cleanSpaces(text) {
+    return text
+        .replace(/\s+/g, " ")
+        .replace(/\s+([,.;:])/g, "$1")
+        .replace(/([,.;:])\s*$/g, "")
+        .trim();
 }
-
-function cutoff30(){
-const d=new Date();
-d.setHours(12,0,0,0);
-d.setDate(d.getDate()-30);
-return d;
+/* =========================================================
+   OBTENER MEDICACIÓN DE UNA LÍNEA
+   ========================================================= */
+function processLine(line) {
+    let text = line.trim();
+    if (!text) {
+        return null;
+    }
+    /*
+       Fecha.
+    */
+    const dateInfo = parseDate(text);
+    let date = null;
+    if (dateInfo) {
+        date = dateInfo.date;
+        text =
+            text.substring(0, dateInfo.index) +
+            " " +
+            text.substring(dateInfo.index + dateInfo.length);
+    }
+    /*
+       Eliminamos envase y cantidades de envase.
+    */
+    text = removePackageInformation(text);
+    text = removePackageQuantity(text);
+    /*
+       Convertimos las pautas.
+    */
+    text = normalizeFrequency(text);
+    /*
+       Limpieza final.
+    */
+    text = cleanSpaces(text);
+    if (!text) {
+        return null;
+    }
+    return {
+        text: text,
+        date: date
+    };
 }
-
-function formatDate(d){
-return d.toLocaleDateString('es-ES',{
-day:'2-digit',
-month:'2-digit',
-year:'numeric'
+/* =========================================================
+   IDENTIFICACIÓN DE DUPLICADOS
+   ========================================================= */
+/*
+   Para decidir si dos líneas corresponden al mismo medicamento
+   ignoramos la pauta final.
+   Así, por ejemplo:
+   "Amoxicilina 875 mg 1/8h"
+   "Amoxicilina 875 mg 1/12h"
+   se consideran el mismo medicamento y se conserva
+   la prescripción más reciente.
+*/
+function medicationKey(text) {
+    let value = text;
+    value = value.replace(
+        /\b1\/(?:8|12|24)h\b/gi,
+        ""
+    );
+    value = value.replace(
+        /\b1\/(?:desayuno|comida|cena)\b/gi,
+        ""
+    );
+    /*
+       También permite identificar pautas expresadas
+       con el formato desayuno/comida/cena original.
+    */
+    value = value.replace(
+        /\b(?:desayuno|comida|cena)\b/gi,
+        ""
+    );
+    return cleanSpaces(value).toLocaleLowerCase("es-ES");
+}
+/* =========================================================
+   PROCESAR TODO EL TEXTO
+   ========================================================= */
+function processText() {
+    const raw = inputText.value;
+    if (!raw.trim()) {
+        result.textContent = "Aquí aparecerá el resultado.";
+        result.classList.add("empty");
+        return "";
+    }
+    const lines = raw.split(/\r?\n/);
+    const medications = new Map();
+    for (const originalLine of lines) {
+        const line = originalLine.trim();
+        if (!line) {
+            continue;
+        }
+        /*
+           Eliminar completamente cualquier línea que contenga:
+           media
+           absorvente
+           pañal
+        */
+        if (isExcludedLine(line)) {
+            continue;
+        }
+        const processed = processLine(line);
+        if (!processed) {
+            continue;
+        }
+        const key = medicationKey(processed.text);
+        if (!key) {
+            continue;
+        }
+        /*
+           Si el medicamento aparece varias veces,
+           conservar únicamente la prescripción
+           con la fecha más reciente.
+        */
+        const existing = medications.get(key);
+        if (!existing) {
+            medications.set(key, processed);
+        } else {
+            if (
+                processed.date &&
+                (
+                    !existing.date ||
+                    processed.date > existing.date
+                )
+            ) {
+                medications.set(key, processed);
+            }
+        }
+    }
+    /*
+       Convertimos el Map en array.
+    */
+    let items = Array.from(medications.values());
+    /*
+       Orden:
+       1. Medicamentos con fecha, de más reciente a más antigua.
+       2. Medicamentos sin fecha, después.
+    */
+    items.sort((a, b) => {
+        if (a.date && b.date) {
+            return b.date - a.date;
+        }
+        if (a.date && !b.date) {
+            return -1;
+        }
+        if (!a.date && b.date) {
+            return 1;
+        }
+        return a.text.localeCompare(
+            b.text,
+            "es",
+            { sensitivity: "base" }
+        );
+    });
+    /*
+       Construimos la salida.
+       La fecha SOLO aparece si la última
+       prescripción tiene 30 días o menos.
+       Las fechas antiguas no aparecen.
+    */
+    const output = items.map(item => {
+        let line = "";
+        if (item.date && isWithinLast30Days(item.date)) {
+            line += formatDate(item.date) + " ";
+        }
+        line += item.text;
+        return line;
+    });
+    const finalText = output.join("\n");
+    if (!finalText) {
+        result.textContent = "No se han encontrado medicamentos.";
+        result.classList.add("empty");
+    } else {
+        result.textContent = finalText;
+        result.classList.remove("empty");
+    }
+    return finalText;
+}
+/* =========================================================
+   PROCESAMIENTO AUTOMÁTICO
+   ========================================================= */
+inputText.addEventListener("input", function() {
+    processText();
 });
-}
-
-function process(){
-$('error').style.display='none';
-
-const lines=$('input').value
-.split(/\r?\n/)
-.map(x=>x.trim())
-.filter(Boolean);
-
-const map=new Map();
-
-for(const line of lines){
-
-if(/\b(?:media|absorvente|pañal)\b/i.test(line)){
-continue;
-}
-
-const di=parseDate(line);
-const date=di?di.date:null;
-const med=prepareMedication(line,di);
-
-if(!med)continue;
-
-const k=key(med);
-const old=map.get(k);
-
-if(!old||(date&&(!old.date||date>old.date))){
-map.set(k,{name:med,date:date});
-}
-}
-
-lastResult=[...map.values()].sort((a,b)=>{
-if(a.date&&b.date)return b.date-a.date;
-if(a.date)return -1;
-if(b.date)return 1;
-return a.name.localeCompare(b.name,'es',{sensitivity:'base'});
+/* =========================================================
+   COPIAR RESULTADO
+   ========================================================= */
+copyButton.addEventListener("click", async function() {
+    const text = processText();
+    if (!text) {
+        return;
+    }
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch (error) {
+        /*
+           Método alternativo para navegadores
+           que no permiten navigator.clipboard.
+        */
+        const temporary = document.createElement("textarea");
+        temporary.value = text;
+        temporary.style.position = "fixed";
+        temporary.style.opacity = "0";
+        document.body.appendChild(temporary);
+        temporary.focus();
+        temporary.select();
+        document.execCommand("copy");
+        temporary.remove();
+    }
+    const originalText = copyButton.textContent;
+    copyButton.textContent = "¡Copiado!";
+    setTimeout(function() {
+        copyButton.textContent = originalText;
+    }, 1200);
 });
-
-const cutoff=cutoff30();
-$('result').innerHTML='';
-
-for(const item of lastResult){
-
-const li=document.createElement('li');
-li.className='item';
-
-const ds=document.createElement('span');
-ds.className='date';
-
-if(item.date&&item.date>=cutoff){
-ds.textContent=formatDate(item.date);
-}
-
-const ms=document.createElement('span');
-ms.className='med';
-ms.textContent=item.name;
-
-li.append(ds,ms);
-$('result').appendChild(li);
-}
-
-$('count').textContent=
-lastResult.length+' medicamento'+
-(lastResult.length===1?'':'s');
-
-if(lines.length&&!lastResult.length){
-$('error').textContent='No he podido extraer medicamentos del texto pegado.';
-$('error').style.display='block';
-}
-}
-
-$('input').addEventListener('input',process);
-
-$('copy').onclick=async()=>{
-
-process();
-
-const cutoff=cutoff30();
-
-const text=lastResult.map(x=>
-(x.date&&x.date>=cutoff?formatDate(x.date)+' ':'')+
-x.name
-).join('\n');
-
-if(!text)return;
-
-try{
-await navigator.clipboard.writeText(text);
-}catch(e){
-const ta=document.createElement('textarea');
-ta.value=text;
-document.body.appendChild(ta);
-ta.select();
-document.execCommand('copy');
-ta.remove();
-}
-
-$('copy').textContent='¡Copiado!';
-
-setTimeout(()=>{
-$('copy').textContent='Copiar resultado';
-},1200);
-};
 </script>
 </body>
 </html>
