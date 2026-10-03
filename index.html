@@ -6,8 +6,11 @@
 <title>ZEloy</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:#17202a;background:#f5f7fa}
-*{box-sizing:border-box} body{margin:0}.wrap{max-width:900px;margin:auto;padding:20px}
-h1{font-size:26px;margin:4px 0 6px}.sub{color:#65717d;margin:0 0 18px}
+*{box-sizing:border-box}
+body{margin:0}
+.wrap{max-width:900px;margin:auto;padding:20px}
+h1{font-size:26px;margin:4px 0 6px}
+.sub{color:#65717d;margin:0 0 18px}
 .card{background:#fff;border:1px solid #dfe4ea;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #0000000a}
 label{font-weight:600;display:block;margin-bottom:8px}
 textarea{width:100%;min-height:280px;border:1px solid #cbd3dc;border-radius:10px;padding:12px;font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
@@ -16,11 +19,18 @@ button{border:0;border-radius:9px;padding:10px 15px;font-weight:600;cursor:point
 button.secondary{background:#e9edf2;color:#25313d}
 .info{font-size:13px;color:#65717d;margin-top:10px;line-height:1.45}
 .result-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}
-.count{font-size:13px;color:#65717d}.list{margin:0;padding:0;list-style:none}
+.count{font-size:13px;color:#65717d}
+.list{margin:0;padding:0;list-style:none}
 .item{display:flex;gap:12px;padding:9px 4px;border-bottom:1px solid #edf0f3;align-items:baseline}
-.item:last-child{border-bottom:0}.date{font-variant-numeric:tabular-nums;font-weight:700;min-width:88px}
-.med{font-size:16px}.error{color:#b42318;background:#fff1f0;border:1px solid #ffd5d2;padding:10px;border-radius:9px;margin-top:10px;display:none}
-@media(max-width:600px){.wrap{padding:12px}.date{min-width:82px;font-size:14px}.med{font-size:15px}}
+.item:last-child{border-bottom:0}
+.date{font-variant-numeric:tabular-nums;font-weight:700;min-width:88px}
+.med{font-size:16px}
+.error{color:#b42318;background:#fff1f0;border:1px solid #ffd5d2;padding:10px;border-radius:9px;margin-top:10px;display:none}
+@media(max-width:600px){
+  .wrap{padding:12px}
+  .date{min-width:82px;font-size:14px}
+  .med{font-size:15px}
+}
 </style>
 </head>
 <body>
@@ -45,13 +55,19 @@ button.secondary{background:#e9edf2;color:#25313d}
     <div id="error" class="error"></div>
   </div>
   <div class="card">
-    <div class="result-head"><strong>Resultado</strong><span class="count" id="count"></span></div>
+    <div class="result-head">
+      <strong>Resultado</strong>
+      <span class="count" id="count"></span>
+    </div>
     <ul class="list" id="result"></ul>
   </div>
 </div>
 <script>
 const $=id=>document.getElementById(id);
 let lastResult=[];
+/* ---------------------------------------------------------
+   LIMPIEZA GENERAL
+--------------------------------------------------------- */
 function clean(s){
   return s
     .replace(/\s+/g,' ')
@@ -61,20 +77,33 @@ function clean(s){
 function key(s){
   return clean(s).toLocaleLowerCase('es');
 }
+/* ---------------------------------------------------------
+   FECHA
+--------------------------------------------------------- */
 function parseDate(line){
-  const re=/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b/;
+  const re=/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b';
   const m=line.match(re);
   if(!m)return null;
   let y=Number(m[3]);
   if(y<100)y+=2000;
   const d=Number(m[1]);
   const mo=Number(m[2]);
-  const dt=new Date(y,mo-1,d,12,0,0,0);
+  const dt=new Date(
+    y,
+    mo-1,
+    d,
+    12,
+    0,
+    0,
+    0
+  );
   if(
     dt.getFullYear()!=y ||
     dt.getMonth()!=mo-1 ||
     dt.getDate()!=d
-  )return null;
+  ){
+    return null;
+  }
   return {
     date:dt,
     start:m.index,
@@ -82,23 +111,10 @@ function parseDate(line){
   };
 }
 /* ---------------------------------------------------------
-   DOSIS DEL MEDICAMENTO
-   Conserva dosis como:
-   875 mg
-   500 mg
-   1 g
-   2 gr
-   500 microgramos
-   5 mg/ml
-   10 mg/g
-   etc.
+   NORMALIZACIÓN DE DOSIS
 --------------------------------------------------------- */
 function normalizeDoseUnits(s){
   let x=s;
-  /*
-    Unificamos algunas variantes para que el resultado sea
-    consistente, sin modificar el valor numérico.
-  */
   x=x.replace(
     /\b(\d+(?:[.,]\d+)?)\s*(?:miligramos?)\b/ig,
     '$1 mg'
@@ -115,9 +131,6 @@ function normalizeDoseUnits(s){
     /\b(\d+(?:[.,]\d+)?)\s*(?:gr)\b/ig,
     '$1 g'
   );
-  /*
-    Espacio normal entre número y unidad.
-  */
   x=x.replace(
     /(\d+(?:[.,]\d+)?)\s*(mg|g|mcg|µg|microgramos)\b/ig,
     '$1 $2'
@@ -125,26 +138,28 @@ function normalizeDoseUnits(s){
   return clean(x);
 }
 /* ---------------------------------------------------------
-   PAUTAS DESAYUNO / COMIDA / CENA
+   PAUTA DESAYUNO / COMIDA / CENA
 --------------------------------------------------------- */
-function extractDose(text, meal){
+function extractDose(text,meal){
   const escapedMeal=meal.replace(
     /[.*+?^${}()|[\]\\]/g,
     '\\$&'
   );
-  let m=text.match(
-    new RegExp(
-      '(?:\\b(\\d+(?:[.,]\\d+)?)\\s*' +
-      '(?:comp(?:rimidos?)?|cápsulas?|capsulas?|sobres?|tabletas?)?' +
-      '\\s*'+escapedMeal+'\\b)|' +
-      '(?:\\b'+escapedMeal+'\\b\\s*[:\\-]?\\s*' +
-      '(\\d+(?:[.,]\\d+)?)\\s*' +
-      '(?:comp(?:rimidos?)?|cápsulas?|capsulas?|sobres?|tabletas?)?)',
-      'i'
-    )
+  const re=new RegExp(
+    '(?:\\b(\\d+(?:[.,]\\d+)?)\\s*' +
+    '(?:comp(?:rimidos?)?|cápsulas?|capsulas?|sobres?|tabletas?)?' +
+    '\\s*'+escapedMeal+'\\b)|' +
+    '(?:\\b'+escapedMeal+'\\b\\s*[:\\-]?\\s*' +
+    '(\\d+(?:[.,]\\d+)?)\\s*' +
+    '(?:comp(?:rimidos?)?|cápsulas?|capsulas?|sobres?|tabletas?)?)',
+    'i'
   );
+  const m=text.match(re);
   if(!m)return null;
-  const value=m[1]!==undefined?m[1]:m[2];
+  const value=
+    m[1]!==undefined
+      ?m[1]
+      :m[2];
   return Number(
     String(value).replace(',','.')
   );
@@ -163,25 +178,70 @@ function mealCode(text){
     ...text.matchAll(/\bcena\b/ig)
   ];
   for(const match of breakfastMatches){
-    const start=Math.max(0,match.index-30);
-    const end=Math.min(text.length,match.index+40);
-    const part=text.slice(start,end);
-    const dose=extractDose(part,'desayuno');
-    breakfast+=dose!==null?dose:1;
+    const start=Math.max(
+      0,
+      match.index-30
+    );
+    const end=Math.min(
+      text.length,
+      match.index+40
+    );
+    const part=text.slice(
+      start,
+      end
+    );
+    const dose=extractDose(
+      part,
+      'desayuno'
+    );
+    breakfast+=
+      dose!==null
+        ?dose
+        :1;
   }
   for(const match of lunchMatches){
-    const start=Math.max(0,match.index-30);
-    const end=Math.min(text.length,match.index+40);
-    const part=text.slice(start,end);
-    const dose=extractDose(part,'comida');
-    lunch+=dose!==null?dose:1;
+    const start=Math.max(
+      0,
+      match.index-30
+    );
+    const end=Math.min(
+      text.length,
+      match.index+40
+    );
+    const part=text.slice(
+      start,
+      end
+    );
+    const dose=extractDose(
+      part,
+      'comida'
+    );
+    lunch+=
+      dose!==null
+        ?dose
+        :1;
   }
   for(const match of dinnerMatches){
-    const start=Math.max(0,match.index-30);
-    const end=Math.min(text.length,match.index+40);
-    const part=text.slice(start,end);
-    const dose=extractDose(part,'cena');
-    dinner+=dose!==null?dose:1;
+    const start=Math.max(
+      0,
+      match.index-30
+    );
+    const end=Math.min(
+      text.length,
+      match.index+40
+    );
+    const part=text.slice(
+      start,
+      end
+    );
+    const dose=extractDose(
+      part,
+      'cena'
+    );
+    dinner+=
+      dose!==null
+        ?dose
+        :1;
   }
   if(
     !breakfastMatches.length &&
@@ -193,28 +253,84 @@ function mealCode(text){
   return `${breakfast}-${lunch}-${dinner}`;
 }
 /* ---------------------------------------------------------
-   CANTIDADES DEL ENVASE
+   ELIMINACIÓN DE ENV / ENVASE
+---------------------------------------------------------
+   IMPORTANTE:
+   Se elimina:
+   env 30 comprimidos
+   envase 30 comprimidos
+   envase de 30 comprimidos
+   env 28 cápsulas
+   envase de 28 cápsulas
+   También admite:
+   env. 30 comprimidos
+   envase: 30 comprimidos
+   NO elimina dosis como:
+   875 mg
+   500 mg
+   1 g
+   500 microgramos
 --------------------------------------------------------- */
-function removePackAmounts(s){
+function removeEnvAmount(s){
+  let x=s;
   const units=
     'comprimidos?|cápsulas?|capsulas?|sobres?|ampollas?|viales?|tabletas?|grageas?|unidades?|uds?';
-  let x=s.replace(
+  /*
+    Caso principal:
+    env 30 comprimidos
+    envase 30 comprimidos
+    envase de 30 comprimidos
+  */
+  x=x.replace(
     new RegExp(
-      '\\b\\d+\\s*(?:'+units+')\\b',
+      '\\b(?:envase|env)\\.?\\s*' +
+      '(?:de\\s*)?' +
+      '\\d+\\s*' +
+      '(?:'+units+')\\b',
       'ig'
     ),
     ''
   );
+  /*
+    Por si aparece "envase de 30" sin unidad.
+  */
   x=x.replace(
-    /\b(?:envase|caja)\s*(?:de\s*)?\d+\b/ig,
+    /\b(?:envase|env)\.?\s*(?:de\s*)?\d+\b/ig,
     ''
   );
   /*
-    Elimina únicamente las palabras env y envase.
-    No elimina el resto de la línea.
+    Si queda la palabra env o envase sola,
+    también se elimina.
   */
   x=x.replace(
-    /\b(?:envase|env)\b/ig,
+    /\b(?:envase|env)\.?\b/ig,
+    ''
+  );
+  return clean(x);
+}
+/* ---------------------------------------------------------
+   CANTIDADES DE ENVASE SIN LA PALABRA ENV
+   Se mantiene la función original para cantidades típicas
+   que aparezcan como información del envase.
+--------------------------------------------------------- */
+function removePackAmounts(s){
+  const units=
+    'comprimidos?|cápsulas?|capsulas?|sobres?|ampollas?|viales?|tabletas?|grageas?|unidades?|uds?';
+  let x=s;
+  /*
+    Primero eliminamos específicamente
+    env/envase + cantidad + unidad.
+  */
+  x=removeEnvAmount(x);
+  /*
+    Después eliminamos cantidades de envase
+    del tipo "30 comprimidos", "28 cápsulas", etc.
+  */
+  x=x.replace(
+    new RegExp(
+      '\\b\\d+\\s*(?:'+units+')\\b',
+      'ig'
+    ),
     ''
   );
   return clean(x);
@@ -224,8 +340,8 @@ function removePackAmounts(s){
 --------------------------------------------------------- */
 function prepareMedication(line,dateInfo){
   /*
-    Si la línea contiene media, absorvente o pañal,
-    se elimina completamente.
+    Si aparece media, absorvente o pañal,
+    se elimina toda la línea.
   */
   if(
     /\b(?:media|absorvente|pañal)\b/i.test(line)
@@ -233,39 +349,36 @@ function prepareMedication(line,dateInfo){
     return '';
   }
   let med=dateInfo
-    ? line.slice(0,dateInfo.start)+' '+line.slice(dateInfo.end)
-    : line;
+    ?line.slice(0,dateInfo.start)+' '+line.slice(dateInfo.end)
+    :line;
   med=clean(med);
   /*
-    Primero conservamos y normalizamos la dosis.
+    Normalizamos las dosis.
   */
   med=normalizeDoseUnits(med);
   /*
-    Eliminamos cantidades del envase.
+    Eliminamos env/envase y su cantidad.
   */
   med=removePackAmounts(med);
   /*
-    Calculamos la pauta antes de eliminar
-    desayuno/comida/cena.
+    Calculamos la pauta.
   */
   const code=mealCode(med);
   if(code){
     /*
-      Eliminamos las palabras desayuno/comida/cena.
+      Eliminamos desayuno/comida/cena.
     */
     med=med.replace(
       /\b(?:desayuno|comida|cena)\b/ig,
       ''
     );
     /*
-      Eliminamos las cantidades que correspondan
-      a las tomas, pero NO las dosis expresadas en mg,
-      g, gr o microgramos.
+      Eliminamos cantidades de comprimidos/cápsulas
+      que formen parte de la pauta.
+      NO afecta a 875 mg, 500 mg, 1 g, etc.
     */
     med=med.replace(
-      /\b\d+(?:[.,]\d+)?\s*' +
-      '(?:comp(?:rimidos?)?|cápsulas?|capsulas?|sobres?|tabletas?)?' +
-      '\b/ig,
+      /\b\d+(?:[.,]\d+)?\s*(?:comp(?:rimidos?)?|cápsulas?|capsulas?|sobres?|tabletas?)\b/ig,
       ''
     );
     med=clean(med);
@@ -274,10 +387,6 @@ function prepareMedication(line,dateInfo){
     */
     med=`${med} ${code}`;
   }else{
-    /*
-      Si no hay desayuno/comida/cena,
-      mantenemos el resto de la información.
-    */
     med=clean(med);
   }
   med=med.replace(
@@ -287,11 +396,13 @@ function prepareMedication(line,dateInfo){
   return clean(med);
 }
 /* ---------------------------------------------------------
-   FECHAS
+   FECHA DE CORTE
 --------------------------------------------------------- */
 function cutoff30(){
   const d=new Date();
-  d.setHours(12,0,0,0);
+  d.setHours(
+    12,0,0,0
+  );
   d.setDate(
     d.getDate()-30
   );
@@ -328,7 +439,8 @@ function process(){
       continue;
     }
     const di=parseDate(line);
-    const date=di?.date||null;
+    const date=
+      di?.date||null;
     const med=prepareMedication(
       line,
       di
@@ -338,7 +450,13 @@ function process(){
     const old=map.get(k);
     if(
       !old ||
-      (date && (!old.date || date>old.date))
+      (
+        date &&
+        (
+          !old.date ||
+          date>old.date
+        )
+      )
     ){
       map.set(
         k,
@@ -393,8 +511,8 @@ function process(){
     ' medicamento'+
     (
       lastResult.length===1
-      ?''
-      :'s'
+        ?''
+        :'s'
     );
   if(
     lines.length &&
